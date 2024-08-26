@@ -5,70 +5,62 @@ import axios from 'axios';
 
 export default function KYCReview() {
   const [submissions, setSubmissions] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Dummy data for pending KYC submissions
-    const dummyData = [
-      {
-        id: 1,
-        fullName: 'Michael Smith',
-        submissionDate: '2024-08-01',
-        email: 'michael.smith@example.com',
-        documentType: 'Passport',
-        status: 'Pending'
-      },
-      {
-        id: 2,
-        fullName: 'Sarah Johnson',
-        submissionDate: '2024-08-05',
-        email: 'sarah.johnson@example.com',
-        documentType: 'Driver\'s License',
-        status: 'Pending'
-      },
-      {
-        id: 3,
-        fullName: 'David Brown',
-        submissionDate: '2024-08-07',
-        email: 'david.brown@example.com',
-        documentType: 'National ID',
-        status: 'Pending'
-      },
-      {
-        id: 4,
-        fullName: 'Emily Davis',
-        submissionDate: '2024-08-10',
-        email: 'emily.davis@example.com',
-        documentType: 'Passport',
-        status: 'Pending'
-      },
-      {
-        id: 5,
-        fullName: 'John Doe',
-        submissionDate: '2024-08-12',
-        email: 'john.doe@example.com',
-        documentType: 'Driver\'s License',
-        status: 'Pending'
+    const fetchPendingKYCs = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/kyc/pending');
+        setSubmissions(response.data);
+      } catch (err) {
+        console.log(err)
+        setError('Error fetching pending KYCs.');
       }
-    ];
-    setSubmissions(dummyData);
+    };
+    fetchPendingKYCs();
   }, []);
 
+  const handleVerification = async (kycId, decision) => {
+    try {
+      await axios.post('/api/kyc/verify', { kycId, decision });
+      setSubmissions(submissions.filter(submission => submission._id !== kycId));
+    } catch (err) {
+      setError('Error verifying KYC.');
+    }
+  };
+
+  if (error) {
+    return <p>{error}</p>;
+  }
+
   return (
-    <div className="max-w-4xl mx-auto bg-white shadow-md rounded-lg p-8 mt-6">
-      <h1 className="text-3xl font-semibold mb-6 text-gray-900">Pending KYC Submissions</h1>
+    <div className="max-w-4xl mx-auto bg-white shadow-md rounded p-6">
+      <h1 className="text-2xl font-bold mb-4">Pending KYC Submissions</h1>
       <div className="space-y-4">
-        {submissions.map(submission => (
-          <div key={submission.id} className="p-6 border border-gray-300 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-            <h2 className="text-xl font-semibold text-gray-800">{submission.fullName}</h2>
-            <p className="text-sm text-gray-600">Submission Date: {submission.submissionDate}</p>
-            <p className="text-sm text-gray-600">Email: {submission.email}</p>
-            <p className="text-sm text-gray-600">Document Type: {submission.documentType}</p>
-            <p className={`text-sm ${submission.status === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>Status: {submission.status}</p>
-            <button className="mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition duration-200">
-              Review Details
-            </button>
-          </div>
-        ))}
+        {submissions.length === 0 ? (
+          <p>No pending KYC submissions.</p>
+        ) : (
+          submissions.map(submission => (
+            <div key={submission._id} className="p-4 border rounded">
+              <h2 className="text-lg font-semibold text-gray-600">{submission.fullName}</h2>
+              <p className="text-sm text-gray-600">Submission Date: {new Date(submission.submissionDate).toLocaleDateString()}</p>
+              <div className="flex space-x-4 mt-2">
+                <button
+                  onClick={() => handleVerification(submission._id, 'APPROVE')}
+                  className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleVerification(submission._id, 'REJECT')}
+                  className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
